@@ -68,18 +68,23 @@ abstract class Strategy {
 					break;
 				}
 				
+				$user_hash_no_cred = $user_hash;				
+				unset($user_hash_no_cred['credentials']);				
+				$profile_fields = $user_hash_no_cred;
+				
 				// Attach this account to the logged in user
 				Model_Authentication::forge(array(
 					'user_id' => $user_id,
 					'provider' => $user_hash['credentials']['provider'],
 					'uid' => $user_hash['credentials']['uid'],
 					'token' => $user_hash['credentials']['token'],
-					'secret' => $user_hash['credentials']['secret'],
+					'secret' => is_null($user_hash['credentials']['secret'])?'':$user_hash['credentials']['secret'],
+					'profile_fields' => $profile_fields,
 					'created_at' => time(),
 				))->save();
 
 				// Attachment went ok so we'll redirect
-				\Response::redirect(\Config::get('ninjauth.urls.logged_in'));
+				\Response::redirect(\Session::get('ninjauth.urls.logged_in',\Config::get('ninjauth.urls.logged_in')));
 			}
 			
 			else
@@ -96,7 +101,7 @@ abstract class Strategy {
 			if (\Auth::instance()->force_login($authentication->user_id))
 			{
 			    // credentials ok, go right in
-			    \Response::redirect(\Config::get('ninjauth.urls.logged_in'));
+			    \Response::redirect(\Session::get('ninjauth.urls.logged_in',\Config::get('ninjauth.urls.logged_in')));
 			}
 		}
 		
