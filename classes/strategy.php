@@ -78,7 +78,7 @@ abstract class Strategy {
 					'provider' => $user_hash['credentials']['provider'],
 					'uid' => $user_hash['credentials']['uid'],
 					'token' => $user_hash['credentials']['token'],
-					'secret' => is_null($user_hash['credentials']['secret'])?'':$user_hash['credentials']['secret'],
+					'secret' => $user_hash['credentials']['secret'],
 					'profile_fields' => $profile_fields,
 					'created_at' => time(),
 				))->save();
