@@ -17,6 +17,7 @@ abstract class Strategy {
 		'google' => 'OAuth2',
 		'github' => 'OAuth2',
 		'linkedin' => 'OAuth',
+		'mailchimp' => 'OAuth2',
 		'openid' => 'OpenId',
 		'unmagnify' => 'OAuth2',
 		'windowslive' => 'OAuth2',
