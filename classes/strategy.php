@@ -93,6 +93,10 @@ abstract class Strategy {
 					throw new Exception('No uid in response.');
 				}
 				
+				$user_hash_no_cred = $user_hash;				
+				unset($user_hash_no_cred['credentials']);				
+				$profile_fields = $user_hash_no_cred;
+				
 				// Attach this account to the logged in user
 				Model_Authentication::forge(array(
 					'user_id' 		=> $user_id,
@@ -102,6 +106,7 @@ abstract class Strategy {
 					'secret' 		=> isset($token->secret) ? $token->secret : null,
 					'expires' 		=> isset($token->expires) ? $token->expires : null,
 					'refresh_token' => isset($token->refresh_token) ? $token->refresh_token : null,
+					'profile_fields' => $profile_fields,
 					'created_at' 	=> time(),
 				))->save();
 
