@@ -12,7 +12,7 @@ class Create_authentications {
 			'provider' => array('constraint' => 50, 'type' => 'varchar'),
 			'uid' => array('constraint' => 255, 'type' => 'varchar'),
 			'token' => array('constraint' => 255, 'type' => 'varchar'),
-			'secret' => array('constraint' => 255, 'type' => 'varchar'),
+			'secret' => array('constraint' => 255, 'type' => 'varchar', 'null' => true),
 			'created_at' => array('constraint' => 11, 'type' => 'int'),
 			'updated_at' => array('constraint' => 11, 'type' => 'int'),
 		), array('id'));
