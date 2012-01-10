@@ -5,7 +5,7 @@ namespace NinjAuth;
 class Model_Authentication extends \Orm\Model {
 	
 	public static $_properties = array(
-		'id', 'provider', 'uid', 'access_token', 'secret', 'expires', 'refresh_token', 'user_id', 'created_at', 'updated_at'
+		'id', 'provider', 'uid', 'access_token', 'secret', 'expires', 'refresh_token', 'user_id', 'profile_fields', 'created_at', 'updated_at'
 	);
 	
 	protected static $_observers = array(
