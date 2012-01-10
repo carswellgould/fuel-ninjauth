@@ -4,6 +4,9 @@ namespace NinjAuth;
 
 abstract class Strategy {
 	
+	/**
+	 * @var  string  Strategy name
+	 */
 	public $name;
 	
 	protected static $providers = array(
@@ -14,8 +17,10 @@ abstract class Strategy {
 		'google' => 'OAuth2',
 		'github' => 'OAuth2',
 		'linkedin' => 'OAuth',
+		'openid' => 'OpenId',
 		'unmagnify' => 'OAuth2',
-		'youtube' => 'OAuth',
+		'windowslive' => 'OAuth2',
+		'youtube' => 'OAuth2',
 	);
 	
 	public function __construct($provider)
@@ -24,6 +29,11 @@ abstract class Strategy {
 		
 		$this->config = \Config::get("ninjauth.providers.{$provider}");
 		
+		if ($this->config === null)
+		{
+			throw new Exception(sprintf('Provider "%s" has no config.', $provider));
+		}
+		
 		if ( ! $this->name)
 		{
 			// Attempt to guess the name from the class name
@@ -31,41 +41,56 @@ abstract class Strategy {
 		}
 	}
 	
-	public static function factory($provider)
+	public static function forge($provider)
 	{
-		$strategy = \Arr::get(static::$providers, $provider);
+		// If a strategy has been specified use it, otherwise look it up
+		$strategy = \Config::get("ninjauth.providers.{$provider}.strategy") ?: \Arr::get(static::$providers, $provider);
 		
-		if ( ! $strategy)
+		if (is_null($strategy))
 		{
 			throw new Exception(sprintf('Provider "%s" has no strategy.', $provider));
 		}
 		
 		$class = "NinjAuth\\Strategy_{$strategy}";
+		
 		return new $class($provider);
 	}
 	
 	public static function login_or_register($strategy)
 	{
-		$response = $strategy->callback();
+		$token = $strategy->callback();
+		
+		switch ($strategy->name)
+		{
+		 	case 'oauth':
+				$user_hash = $strategy->provider->get_user_info($strategy->consumer, $token);
+			break;
+
+			case 'oauth2':
+				$user_hash = $strategy->provider->get_user_info($token);
+			break;
+
+			case 'openid':
+				$user_hash = $strategy->get_user_info($token);
+			break;
+
+			default:
+				throw new Exception("Unsupported Strategy: {$strategy->name}");
+		}
 		
 		if (\Auth::check())
 		{
-			$user_id = end(\Auth::instance()->get_user_id());
+			list($driver, $user_id) = \Auth::instance()->get_user_id();
 			
 			$num_linked = Model_Authentication::count_by_user_id($user_id);
 		
 			// Allowed multiple providers, or not authed yet?
 			if ($num_linked === 0 or \Config::get('ninjauth.link_multiple_providers') === true)
 			{
-				switch ($strategy->name)
+				// If there is no uid we can't remember who this is
+				if ( ! isset($user_hash['uid']))
 				{
-				 	case 'oauth':
-						$user_hash = $strategy->provider->get_user_info($strategy->consumer, $response);
-					break;
-
-					case 'oauth2':
-						$user_hash = $strategy->provider->get_user_info($response->token);
-					break;
+					throw new Exception('No uid in response.');
 				}
 				
 				$user_hash_no_cred = $user_hash;				
@@ -74,13 +99,15 @@ abstract class Strategy {
 				
 				// Attach this account to the logged in user
 				Model_Authentication::forge(array(
-					'user_id' => $user_id,
-					'provider' => $user_hash['credentials']['provider'],
-					'uid' => $user_hash['credentials']['uid'],
-					'token' => $user_hash['credentials']['token'],
-					'secret' => $user_hash['credentials']['secret'],
+					'user_id' 		=> $user_id,
+					'provider' 		=> $strategy->provider->name,
+					'uid' 			=> $user_hash['uid'],
+					'access_token' 	=> isset($token->access_token) ? $token->access_token : null,
+					'secret' 		=> isset($token->secret) ? $token->secret : null,
+					'expires' 		=> isset($token->expires) ? $token->expires : null,
+					'refresh_token' => isset($token->refresh_token) ? $token->refresh_token : null,
 					'profile_fields' => $profile_fields,
-					'created_at' => time(),
+					'created_at' 	=> time(),
 				))->save();
 
 				// Attachment went ok so we'll redirect
@@ -95,7 +122,7 @@ abstract class Strategy {
 		}
 		
 		// The user exists, so send him on his merry way as a user
-		else if ($authentication = Model_Authentication::find_by_token_and_secret($response->token, $response->secret))
+		else if ($authentication = Model_Authentication::find_by_uid($user_hash['uid']))
 		{
 			// Force a login with this username
 			if (\Auth::instance()->force_login($authentication->user_id))
@@ -107,22 +134,18 @@ abstract class Strategy {
 		
 		// They aren't a user, so redirect to registration page
 		else
-		{
-			switch ($strategy->name)
-			{
-			 	case 'oauth':
-					$user_hash = $strategy->provider->get_user_info($strategy->consumer, $response);
-				break;
-				
-				case 'oauth2':
-					$user_hash = $strategy->provider->get_user_info($response->token);
-				break;
-				
-				default:
-					exit('Ummm....');
-			}
-			
-			\Session::set('ninjauth', $user_hash);
+		{	
+			\Session::set('ninjauth', array(
+				'user' => $user_hash,
+				'authentication' => array(
+					'provider' 		=> $strategy->provider->name,
+					'uid' 			=> $user_hash['uid'],
+					'access_token' 	=> isset($token->access_token) ? $token->access_token : null,
+					'secret' 		=> isset($token->secret) ? $token->secret : null,
+					'expires' 		=> isset($token->expires) ? $token->expires : null,
+					'refresh_token' => isset($token->refresh_token) ? $token->refresh_token : null,
+				),
+			));
 
 			\Response::redirect(\Config::get('ninjauth.urls.registration'));
 		}
