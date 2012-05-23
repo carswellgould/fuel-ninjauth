@@ -111,7 +111,7 @@ abstract class Strategy {
 				))->save();
 
 				// Attachment went ok so we'll redirect
-				\Response::redirect(\Session::get('ninjauth.urls.logged_in',\Config::get('ninjauth.urls.logged_in')));
+				\Response::redirect(\Session::get('logged_in',\Config::get('ninjauth.urls.logged_in')));
 			}
 			
 			else
@@ -128,7 +128,7 @@ abstract class Strategy {
 			if (\Auth::instance()->force_login($authentication->user_id))
 			{
 			    // credentials ok, go right in
-			    \Response::redirect(\Session::get('ninjauth.urls.logged_in',\Config::get('ninjauth.urls.logged_in')));
+			    \Response::redirect(\Session::get('logged_in',\Config::get('ninjauth.urls.logged_in')));
 			}
 		}
 		
